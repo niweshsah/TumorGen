@@ -1,0 +1,76 @@
+name: Deploy TumorGen web
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "web/**"
+      - "visualization-dataset/**"
+      - ".github/workflows/deploy-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tumorgen-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy the visualization site
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: visualization-dataset/uv.lock
+
+      - name: Cache pinned source data and prepared cases
+        uses: actions/cache@v4
+        with:
+          path: |
+            visualization-dataset/data/raw
+            web/public/data
+          key: visualization-data-v1-${{ hashFiles('visualization-dataset/prepare.py', 'visualization-dataset/uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            visualization-data-v1-${{ hashFiles('visualization-dataset/prepare.py', 'visualization-dataset/uv.lock') }}-
+
+      - name: Install dataset preparation dependencies
+        run: uv sync --project visualization-dataset --locked --python 3.11
+
+      - name: Prepare and validate the public case library
+        run: uv run --project visualization-dataset --locked python visualization-dataset/prepare.py --count 40
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build the site and include prepared cases
+        working-directory: web
+        run: npm run build
+
+      - name: Deploy static assets to Cloudflare Workers
+        working-directory: web
+        run: npx --yes wrangler@4.34.0 deploy --config wrangler.jsonc
