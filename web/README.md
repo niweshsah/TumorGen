@@ -75,3 +75,9 @@ Run `npm run build` and deploy the **contents of `dist/`**, including `assets`, 
 Current application: https://crimson-disk-92b1.sahniwesh.workers.dev/
 
 After deployment, verify `/`, `/?view=research#results`, `/?case=UPENN-GBM-00002_11`, figure requests, MRI assets, and both themes. Building locally does not publish or update the live deployment.
+
+### GitHub deployment to the existing Worker
+
+`.github/workflows/deploy-cloudflare.yml` prepares the pinned 40-case public cohort, runs the production build, and deploys static assets through Wrangler. The checked-in `wrangler.jsonc` names the existing `crimson-disk-92b1` Worker and enables SPA fallback for Research deep links. MRI files stay out of Git; Actions caches the downloaded source and generated case library.
+
+Add `CLOUDFLARE_API_TOKEN` (Workers Scripts edit permission) and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions repository secrets. A push to `main` that changes `web/`, `visualization-dataset/`, or the deployment workflow triggers deployment. You can also run **Deploy TumorGen web** manually in GitHub Actions. The first deployment prepares the dataset and may take several minutes.

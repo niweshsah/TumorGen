@@ -33,14 +33,14 @@ The Research view includes all 28 whole-tumor and 24 per-label scores, model com
 
 ```text
 TumorGen/
-├── inference/                  # MRI preprocessing and model inference
+├── inference/                 # MRI preprocessing and model inference
 ├── training/
-│   ├── medsam_finetune/        # MedSAM and LoRA training helpers
+│   ├── medsam_finetune/       # MedSAM and LoRA training helpers
 │   ├── nnUnet/                # nnU-Net preprocessing and training wrapper
-│   └── yolo_finetune/          # YOLO dataset preparation
+│   └── yolo_finetune/         # YOLO dataset preparation
 ├── evaluation/                # Segmentation evaluation and CSV/JSON reports
 ├── dataset/                   # Local dataset location
-├── visualization-dataset/                 # Public MRI preparation and prediction adapter
+├── visualization-dataset/     # Public MRI preparation and prediction adapter
 ├── web/                       # React/TypeScript application and tests
 └── requirements.txt           # Research Python dependencies
 ```
@@ -156,3 +156,14 @@ Keep MRI volumes, patient data, trained checkpoints, generated predictions, loca
 - [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
 - [Domain Game](https://arxiv.org/abs/2406.02125)
 - [UPenn-GBM / TCIA dataset](https://doi.org/10.7937/TCIA.709X-DN49)
+
+## GitHub deployment to Cloudflare
+
+The GitHub Actions workflow in `.github/workflows/deploy-cloudflare.yml` builds and deploys the existing Worker named `crimson-disk-92b1` when the web application, dataset preparation code, or workflow changes reach `main`. It retrieves the pinned public source dataset, prepares and validates 40 cases, builds `web/`, and publishes `web/dist/` as Workers static assets. Patient MRI and generated assets remain excluded from Git; the workflow caches prepared files between runs.
+
+Before the first deployment, add these repository Actions secrets in GitHub under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare API token allowed to edit Workers Scripts.
+- `CLOUDFLARE_ACCOUNT_ID`: the account ID that owns the existing Worker.
+
+Then push a change to `main` under `web/`, `visualization-dataset/`, or the deployment workflow, or start **Deploy TumorGen web** manually under GitHub Actions. The first run prepares the dataset and may take several minutes. Later runs can reuse the GitHub Actions cache. Cloudflare requires each static asset to be at most 25 MiB; the prepared 40-case site is about 365 MiB across 602 data files, with the largest file under 2 MiB.
