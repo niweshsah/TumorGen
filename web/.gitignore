@@ -1,0 +1,14 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+public/data/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.impeccable/
+AGENTS.md
+PRODUCT.md
+DESIGN.md
+CONCEPTS.md

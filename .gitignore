@@ -1,0 +1,66 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local tools, environments, and caches
+.tools/
+.uv-cache/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+node_modules/
+*.tsbuildinfo
+
+# Builds, test artifacts, and generated imaging assets
+dist/
+build/
+test-results/
+playwright-report/
+coverage/
+web/public/data/
+visualization-dataset/data/
+
+# MRI volumes, trained weights, and inference outputs
+*.nii
+*.nii.gz
+*.mha
+*.mhd
+*.nrrd
+*.pt
+*.pth
+*.ckpt
+*.onnx
+checkpoints/
+predictions/
+outputs/
+RESULTS_FOLDER/
+nUNet_raw_data_base/
+nUNet_preprocessed/
+
+# Local configuration; retain documented examples
+.env
+.env.*
+!.env.example
+
+# AI-agent instructions and local design metadata
+.agents/
+.codex/
+.impeccable/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+SKILL.md
+PRODUCT.md
+DESIGN.md
+CONCEPTS.md
+.github/copilot-instructions.md
+
