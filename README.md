@@ -1,57 +1,23 @@
 # TumorGen
 
-TumorGen investigates cross-dataset generalization in brain tumor segmentation using a two-stage, coarse-to-fine framework. YOLOv8m provides bounding-box prompts for MedSAM, and the resulting localization mask defines a region of interest for nnU-Net volumetric refinement.
+A two-stage brain tumor segmentation project combining MedSAM localization with a 10 mm region-of-interest buffer and nnU-Net volumetric refinement. The repository includes training, inference, evaluation, and an interactive MRI visualization application.
 
-The repository includes model training and inference scripts, segmentation evaluation utilities, and an interactive web application for reviewing MRI volumes and research results.
+[Live application](https://crimson-disk-92b1.sahniwesh.workers.dev/?case=UPENN-GBM-00002_11) · [Research workflow and results](https://crimson-disk-92b1.sahniwesh.workers.dev/?view=research) · [GitHub](https://github.com/niweshsah/TumorGen)
 
-[Live application](https://crimson-disk-92b1.sahniwesh.workers.dev/) · [Research results](https://crimson-disk-92b1.sahniwesh.workers.dev/?view=research) · [Source repository](https://github.com/niweshsah/TumorGen)
+## Repository
 
-## Methodology
+| Directory | Purpose |
+| --- | --- |
+| `inference/` | MRI preprocessing and model inference |
+| `training/` | MedSAM/LoRA, YOLO, and nnU-Net training |
+| `evaluation/` | Segmentation metrics and CSV/JSON reports |
+| `dataset/` | Local research datasets |
+| `visualization-dataset/` | Public case preparation and prediction adapter |
+| `web/` | React and TypeScript application |
 
-1. **Multimodal preprocessing:** normalize spatially corresponding MRI slices and stack T1ce, T2, and FLAIR into a three-channel, pseudo-RGB representation.
-2. **Initial localization:** use YOLOv8m bounding boxes to guide MedSAM segmentation.
-3. **ROI definition:** reconstruct the segmentation volume, expand the mask with a 10 mm buffer, and apply the ROI to all four MRI modalities.
-4. **Volumetric refinement:** process the masked MRI volumes with nnU-Net to obtain the final tumor segmentation.
-5. **Evaluation:** compare predictions with reference annotations using whole-tumor and per-label Dice similarity coefficient (DSC).
+## Run the website
 
-MedSAM is adapted to a custom RGB-stacked MRI dataset through rank-4, decoder-side low-rank adaptation (LoRA), with the image encoder frozen. The reported research configuration uses cross-entropy for classification loss and Tversky loss for segmentation, with α = 0.7 and β = 0.3. The committed MedSAM training script currently uses different Tversky defaults; align the run configuration before attempting to reproduce these experiments. The ROI implementation approximates the physical margin through voxel-spacing-aware binary dilation rather than an exact Euclidean-distance expansion.
-
-## Experimental results
-
-Experiments use BraTS adult glioma, Sub-Saharan African (BraTS-SSA), and pediatric (BraTS-PED) datasets. The principal finding is improved whole-tumor segmentation on pediatric and SSA evaluation cohorts excluded from the corresponding training combinations, with uneven performance across individual tumor subregions.
-
-| Evaluation cohort | Training cohorts         | nnU-Net baseline DSC | TumorGen pipeline DSC |
-| ----------------- | ------------------------ | -------------------: | --------------------: |
-| SSA               | Adult glioma + Pediatric |                 0.70 |                  0.76 |
-| Pediatric         | Adult glioma + SSA       |                 0.12 |                  0.64 |
-| Adult glioma      | Adult glioma + SSA       |                 0.92 |                  0.88 |
-| Adult glioma      | Adult glioma + Pediatric |                 0.92 |                  0.87 |
-
-The Research view includes all 28 whole-tumor and 24 per-label scores, model comparisons, training curves, and qualitative examples. These are reported experimental results, not scores recomputed by the website. Adult-glioma performance is lower than the listed baseline; whole-tumor improvements do not imply uniform improvement in NCR, ED, and ET segmentation. The available experiment documentation does not establish clinical effectiveness or provide uncertainty estimates.
-
-## Repository structure
-
-```text
-TumorGen/
-├── inference/                 # MRI preprocessing and model inference
-├── training/
-│   ├── medsam_finetune/       # MedSAM and LoRA training helpers
-│   ├── nnUnet/                # nnU-Net preprocessing and training wrapper
-│   └── yolo_finetune/         # YOLO dataset preparation
-├── evaluation/                # Segmentation evaluation and CSV/JSON reports
-├── dataset/                   # Local dataset location
-├── visualization-dataset/     # Public MRI preparation and prediction adapter
-├── web/                       # React/TypeScript application and tests
-└── requirements.txt           # Research Python dependencies
-```
-
-## Web application
-
-The application provides synchronized Ground Truth and Prediction viewers, a 40-case browser, axial/coronal/sagittal MRI comparisons, segmentation metrics, JSON exports, and persistent light/dark themes. The Research view explains the scientific workflow and experimental results. Camera, patient, slice, and rendering state are preserved when switching views.
-
-### Local setup
-
-Use Node.js 22.12 or later, uv, and Python 3.11 for public-data preparation. This environment is separate from the research training environment.
+Requires Node.js 22.12+, uv, and Python 3.11. From the repository root:
 
 ```bash
 uv sync --project visualization-dataset --python 3.11
@@ -61,109 +27,26 @@ npm ci
 npm run dev -- --port 5183
 ```
 
-Open `http://127.0.0.1:5183/`. Preparation downloads public source data and writes generated assets to `web/public/data/`; these files are excluded from Git. Allow adequate space for the original MRI cache and at least 500 MB for the prepared application assets.
+Open `http://127.0.0.1:5183/`. Preparation downloads public MRI data and generates ignored assets in `web/public/data/`. Allow at least 500 MB for prepared assets, plus space for the source cache. Use `npm run build` for a production build.
 
-For an optimized build:
+The interactive library contains 40 public [UPenn-GBM / TCIA](https://doi.org/10.7937/TCIA.709X-DN49) cases under CC BY 4.0. Its Prediction masks are published automated segmentations; TumorGen weights are not integrated into this library. Case-level agreement is separate from the BraTS research results presented on the site.
 
-```bash
-cd web
-npm run build
-npm run preview -- --port 4183
-```
+See [web documentation](web/README.md) for controls, checks, and deployment, and [prediction integration](visualization-dataset/INTEGRATION.md) for connecting trained outputs.
 
-See [web application documentation](web/README.md) for controls, verification, and deployment. See [prediction integration](visualization-dataset/INTEGRATION.md) for connecting trained model outputs.
+## Research scripts
 
-### Interactive data provenance
-
-The interactive case library uses 40 public UPenn-GBM / TCIA cases under CC BY 4.0. Ground Truth comes from expert-reviewed annotations; the prepared Prediction masks come from separately released automated segmentations. Actual TumorGen weights are not integrated into that prepared library. Its case-level metrics are distinct from the BraTS experimental results above.
-
-Original MRI geometry and source attribution are retained in preparation records and exported provenance. Expert annotations were reviewed and revised from automated masks, so agreement is descriptive rather than an independent clinical benchmark.
-
-## Research environment and execution
-
-Use Python 3.10 and a PyTorch/CUDA environment compatible with your hardware and the selected model packages. The research dependencies and scripts require environment-specific setup. The `python>=3.10` line in `requirements.txt` is an interpreter constraint, not an installable package; omit it when installing:
+Use Python 3.10 with a compatible PyTorch/CUDA environment. Install `requirements.txt` after removing its non-installable `python>=3.10` entry; OpenCV and Ultralytics are also required. Configure local datasets and checkpoints, along with `nnUNet_raw_data_base`, `nnUNet_preprocessed`, and `RESULTS_FOLDER`.
 
 ```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-sed '/^python>=/d' requirements.txt > /tmp/tumorgen-requirements.txt
-python -m pip install -r /tmp/tumorgen-requirements.txt
-python -m pip install opencv-python ultralytics
-```
-
-Select the appropriate PyTorch build for your CUDA installation. Set `nnUNet_raw_data_base`, `nnUNet_preprocessed`, and `RESULTS_FOLDER` before nnU-Net workflows. Dataset directories and checkpoints must be supplied locally.
-
-### Modality and label mappings
-
-| nnU-Net suffix | MRI modality         |
-| -------------- | -------------------- |
-| `_0000.nii.gz` | T1-native            |
-| `_0001.nii.gz` | Contrast-enhanced T1 |
-| `_0002.nii.gz` | T2                   |
-| `_0003.nii.gz` | FLAIR                |
-
-Research scripts use label 0 for background, 1 for necrotic/non-enhancing tumor core (NCR), 2 for edema (ED), and 3 for enhancing tumor (ET). The web application uses BraTS-style encoding with ET = 4; the prediction adapter performs the required mapping.
-
-### Training
-
-```bash
-python training/nnUnet/train.py \
-  --task_number 102 \
-  --task_name Task102_BratsMix \
-  --fold 0 \
-  --configuration 3d_fullres \
-  --trainer_class nnUNetTrainerV2
-```
-
-MedSAM fine-tuning is configured in `training/medsam_finetune/lora_fine_tune.py`. Supply image/mask folders, split lists, the pretrained SAM checkpoint, and the output checkpoint directory. YOLO preparation scripts are under `training/yolo_finetune/`.
-
-### Inference and evaluation
-
-```bash
+python training/nnUnet/train.py --task_number 102 --task_name Task102_BratsMix --fold 0 --configuration 3d_fullres --trainer_class nnUNetTrainerV2
 python inference/test.py
-python evaluation/evaluation.py \
-  -ref /path/to/reference_masks \
-  -pred /path/to/predicted_masks \
-  -l 1 2 3
+python evaluation/evaluation.py -ref /path/to/references -pred /path/to/predictions -l 1 2 3
 ```
 
-Configure the inference script's dataset and checkpoint paths before execution; it does not implement a `--root_dir` argument. Some research scripts also depend on local model/helper imports and need integration work before use in another environment. The evaluator currently expects `BraTS-SSA*` case directories and writes `multilabel_evaluation.csv` and `.json` to the prediction directory.
+Inference uses configured paths rather than a `--root_dir` argument; some scripts require local helper imports. The evaluator expects `BraTS-SSA*` case directories. Research labels are NCR = 1, ED = 2, ET = 3; the web adapter maps ET to 4. Preserve modality suffixes in T1, T1ce, T2, FLAIR order (`_0000`–`_0003`). Align training configuration with the reported experiments before reproduction.
 
-## Verification
+## Cloudflare deployment
 
-```bash
-cd web
-npm run check
-npm run lint
-npm run format:check
-npm test
-npm run build
-npx playwright install chromium
-PLAYWRIGHT_TEST_BUILD=1 npm run test:e2e
-```
+[GitHub Actions](.github/workflows/deploy-cloudflare.yml) prepares the public cases, builds `web/`, and deploys to the existing `crimson-disk-92b1` Worker. Add `CLOUDFLARE_API_TOKEN` (Workers Scripts edit permission) and `CLOUDFLARE_ACCOUNT_ID` under repository **Settings → Secrets and variables → Actions**. Deployment runs on relevant changes to `main` or through the manual **Deploy TumorGen web** action.
 
-Browser tests require the prepared 40-case dataset and an available Chromium browser. An existing browser can be selected with `PLAYWRIGHT_EXECUTABLE_PATH`. Validate research-pipeline changes separately on representative MRI volumes, checking shape, affine orientation, label encoding, and per-label DSC.
-
-## Data handling
-
-Keep MRI volumes, patient data, trained checkpoints, generated predictions, local environments, caches, and build artifacts out of Git. The application’s source code, scientific figures, fonts and their license, test code, and configuration examples are version-controlled.
-
-## References
-
-- [MedSAM](https://github.com/bowang-lab/MedSAM)
-- [nnU-Net](https://github.com/MIC-DKFZ/nnUNet)
-- [YOLOv8](https://docs.ultralytics.com/models/yolov8/)
-- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
-- [Domain Game](https://arxiv.org/abs/2406.02125)
-- [UPenn-GBM / TCIA dataset](https://doi.org/10.7937/TCIA.709X-DN49)
-
-## GitHub deployment to Cloudflare
-
-The GitHub Actions workflow in `.github/workflows/deploy-cloudflare.yml` builds and deploys the existing Worker named `crimson-disk-92b1` when the web application, dataset preparation code, or workflow changes reach `main`. It retrieves the pinned public source dataset, prepares and validates 40 cases, builds `web/`, and publishes `web/dist/` as Workers static assets. Patient MRI and generated assets remain excluded from Git; the workflow caches prepared files between runs.
-
-Before the first deployment, add these repository Actions secrets in GitHub under **Settings → Secrets and variables → Actions**:
-
-- `CLOUDFLARE_API_TOKEN`: a Cloudflare API token allowed to edit Workers Scripts.
-- `CLOUDFLARE_ACCOUNT_ID`: the account ID that owns the existing Worker.
-
-Then push a change to `main` under `web/`, `visualization-dataset/`, or the deployment workflow, or start **Deploy TumorGen web** manually under GitHub Actions. The first run prepares the dataset and may take several minutes. Later runs can reuse the GitHub Actions cache. Cloudflare requires each static asset to be at most 25 MiB; the prepared 40-case site is about 365 MiB across 602 data files, with the largest file under 2 MiB.
+Keep patient data, checkpoints, generated outputs, environments, and build artifacts out of Git.
